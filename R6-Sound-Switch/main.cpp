@@ -23,16 +23,37 @@ static std::vector<BYTE> pixelBuffer;
 static BITMAPINFO bitmapInfo = {};
 
 
-bool ContainsAnyKeyword(const char* extractedText) {
-  if (!extractedText) return false;
+enum COMMAND {
+  PREPARATION,
+  ACTION,
+  LOST,
+  WON,
+  NONE
+};
+
+
+COMMAND ContainsAnyKeyword(const char* extractedText) {
+  if (!extractedText) return COMMAND::NONE;
 
   const char* keywords[] = { "PREPARATION", "ACTION", "LOST", "WON" };
-  for (const char* kw : keywords) {
-    if (std::strstr(extractedText, kw) != nullptr) {
-      return true; // gefunden
-    }
+  
+  if (std::strstr(extractedText, keywords[0]) != nullptr) {
+    return COMMAND::PREPARATION;
   }
-  return false; // keiner der Keywords gefunden
+
+  if (std::strstr(extractedText, keywords[1]) != nullptr) {
+    return COMMAND::ACTION;
+  }
+
+  if (std::strstr(extractedText, keywords[2]) != nullptr) {
+    return COMMAND::LOST;
+  }
+
+  if (std::strstr(extractedText, keywords[3]) != nullptr) {
+    return COMMAND::WON;
+  }
+
+  return COMMAND::NONE;
 }
 
 void PrepareString(char* extractedText) {
@@ -166,10 +187,10 @@ void CaptureAndProcessRegion(int x, int y, int width, int height, int index) {
     return;
   }
 
-  #ifdef _DEBUG
+#ifdef _DEBUG
   std::string imageFilename = "screenshot_" + std::to_string(index) + ".bmp";
   SaveBitmapToFile(bitmapProcessed, memDcProcessed, imageFilename);
-  #endif
+#endif
 
   tesseract::TessBaseAPI ocrApi;
   if (ocrApi.Init(nullptr, "eng")) {
@@ -202,17 +223,35 @@ void CaptureAndProcessRegion(int x, int y, int width, int height, int index) {
   char* extractedText = ocrApi.GetUTF8Text();
   PrepareString(extractedText);
 
-  if (ContainsAnyKeyword(extractedText)) {
-    std::string textFilename = "screenshot_" + std::to_string(index) + ".txt";
-    std::ofstream textFile(textFilename, std::ios::out | std::ios::binary);
-    if (textFile.is_open()) {
-      textFile.write(extractedText, strlen(extractedText));
-      textFile.close();
-      std::cout << "OCR output saved to: " << textFilename << "\n";
-    }
-    else {
-      std::cerr << "Failed to write text file\n";
-    }
+#ifdef _DEBUG
+  std::string textFilename = "screenshot_" + std::to_string(index) + ".txt";
+  std::ofstream textFile(textFilename, std::ios::out | std::ios::binary);
+  if (textFile.is_open()) {
+    textFile.write(extractedText, strlen(extractedText));
+    textFile.close();
+    std::cout << "OCR output saved to: " << textFilename << "\n";
+  }
+  else {
+    std::cerr << "Failed to write text file\n";
+  }
+#endif
+
+  switch (ContainsAnyKeyword(extractedText)) {
+  case COMMAND::PREPARATION:
+    std::cout << "PREPARATION" << std::endl;
+    break;
+  case COMMAND::ACTION:
+    std::cout << "ACTION" << std::endl;
+    break;
+  case COMMAND::WON:
+    std::cout << "WON" << std::endl;
+    break;
+  case COMMAND::LOST:
+    std::cout << "LOST" << std::endl;
+    break;
+  case COMMAND::NONE:
+  default:
+    break;
   }
 
   delete[] extractedText;
