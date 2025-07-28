@@ -3,6 +3,8 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <vector>
+#include <algorithm>
 
 bool SaveBitmapToFile(HBITMAP hBitmap, HDC hDC, const std::string& filename) {
   BITMAP bmp;
@@ -51,22 +53,80 @@ bool SaveBitmapToFile(HBITMAP hBitmap, HDC hDC, const std::string& filename) {
 }
 
 void TakeScreenshotRegion(int x, int y, int width, int height, int count) {
-  HDC hScreen = GetDC(nullptr);
-  HDC hMem = CreateCompatibleDC(hScreen);
-  HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, width, height);
-  SelectObject(hMem, hBitmap);
+  const int scaledWidth = width / 2;
+  const int scaledHeight = height / 2;
 
-  BitBlt(hMem, 0, 0, width, height, hScreen, x, y, SRCCOPY);
+  HDC hScreen = GetDC(nullptr);
+  HDC hMemOriginal = CreateCompatibleDC(hScreen);
+  HBITMAP hBitmapOriginal = CreateCompatibleBitmap(hScreen, width, height);
+  SelectObject(hMemOriginal, hBitmapOriginal);
+
+  BitBlt(hMemOriginal, 0, 0, width, height, hScreen, x, y, SRCCOPY);
+
+  // Skalieren
+  HDC hMemScaled = CreateCompatibleDC(hScreen);
+  HBITMAP hBitmapScaled = CreateCompatibleBitmap(hScreen, scaledWidth, scaledHeight);
+  SelectObject(hMemScaled, hBitmapScaled);
+  SetStretchBltMode(hMemScaled, HALFTONE);
+  StretchBlt(hMemScaled, 0, 0, scaledWidth, scaledHeight,
+    hMemOriginal, 0, 0, width, height, SRCCOPY);
+
+  // Pixel verarbeiten
+  BITMAPINFO bmi = {};
+  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  bmi.bmiHeader.biWidth = scaledWidth;
+  bmi.bmiHeader.biHeight = -scaledHeight; // Top-down
+  bmi.bmiHeader.biPlanes = 1;
+  bmi.bmiHeader.biBitCount = 32;
+  bmi.bmiHeader.biCompression = BI_RGB;
+
+  int imageSize = scaledWidth * scaledHeight * 4;
+  std::vector<BYTE> pixels(imageSize);
+  GetDIBits(hMemScaled, hBitmapScaled, 0, scaledHeight, pixels.data(), &bmi, DIB_RGB_COLORS);
+
+  // Einstellungen für Helligkeit & Kontrast
+  float brightness = -0.2f;  // -1.0 = sehr dunkel, 0.0 = neutral, +1.0 = heller
+  float contrast = 1.5f;     // 1.0 = neutral, >1 = mehr Kontrast, <1 = flacher
+
+  for (int i = 0; i < scaledWidth * scaledHeight; ++i) {
+    BYTE* px = &pixels[i * 4];
+
+    // RGB nach Graustufe (Helligkeit) – einfacher Luma-Algorithmus
+    float gray = 0.299f * px[2] + 0.587f * px[1] + 0.114f * px[0];
+
+    // Helligkeit & Kontrast anwenden
+    gray = (gray / 255.0f - 0.5f);        // in [-0.5, +0.5]
+    gray = gray * contrast + brightness; // anwenden
+    gray = (gray + 0.5f) * 255.0f;        // zurückskalieren
+    gray = std::clamp(gray, 0.0f, 255.0f);
+
+    BYTE g = static_cast<BYTE>(gray);
+    px[0] = g; // B
+    px[1] = g; // G
+    px[2] = g; // R
+  }
+
+  // Neues Bitmap mit bearbeiteten Pixeln erstellen
+  HBITMAP hBitmapProcessed = CreateCompatibleBitmap(hScreen, scaledWidth, scaledHeight);
+  HDC hMemProcessed = CreateCompatibleDC(hScreen);
+  SelectObject(hMemProcessed, hBitmapProcessed);
+  SetDIBits(hMemProcessed, hBitmapProcessed, 0, scaledHeight, pixels.data(), &bmi, DIB_RGB_COLORS);
 
   std::string filename = "screenshot_" + std::to_string(count) + ".bmp";
-  SaveBitmapToFile(hBitmap, hMem, filename);
+  SaveBitmapToFile(hBitmapProcessed, hMemProcessed, filename);
+  std::cout << "Schwarz-Weiß Screenshot gespeichert: " << filename << "\n";
 
-  std::cout << "Screenshot gespeichert: " << filename << "\n";
-
-  DeleteObject(hBitmap);
-  DeleteDC(hMem);
+  // Aufräumen
+  DeleteObject(hBitmapOriginal);
+  DeleteObject(hBitmapScaled);
+  DeleteObject(hBitmapProcessed);
+  DeleteDC(hMemOriginal);
+  DeleteDC(hMemScaled);
+  DeleteDC(hMemProcessed);
   ReleaseDC(nullptr, hScreen);
 }
+
+
 
 int main() {
   const int regionWidth = 1080;
