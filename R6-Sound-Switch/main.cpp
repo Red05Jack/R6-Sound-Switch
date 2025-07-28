@@ -11,6 +11,12 @@
 #include <tesseract/baseapi.h>
 #include <leptonica/allheaders.h>
 
+#include <mmdeviceapi.h>
+#include <endpointvolume.h>
+#include <audiopolicy.h>
+#include <comdef.h>
+#include <tlhelp32.h>
+
 // Global persistent resources
 static HDC screenDc = nullptr;
 static HDC memDcOriginal = nullptr;
@@ -21,6 +27,76 @@ static HBITMAP bitmapScaled = nullptr;
 static HBITMAP bitmapProcessed = nullptr;
 static std::vector<BYTE> pixelBuffer;
 static BITMAPINFO bitmapInfo = {};
+
+bool IsTargetProcess(DWORD pid, const std::wstring& targetName) {
+  HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (snapshot == INVALID_HANDLE_VALUE) return false;
+
+  PROCESSENTRY32 entry = { sizeof(PROCESSENTRY32) };
+  if (Process32First(snapshot, &entry)) {
+    do {
+      if (entry.th32ProcessID == pid) {
+        std::wstring name(entry.szExeFile);
+        CloseHandle(snapshot);
+        return _wcsicmp(name.c_str(), targetName.c_str()) == 0;
+      }
+    } while (Process32Next(snapshot, &entry));
+  }
+
+  CloseHandle(snapshot);
+  return false;
+}
+
+void SetVolume(int volumePercent, const std::wstring& processName) {
+  if (volumePercent < 0) volumePercent = 0;
+  if (volumePercent > 100) volumePercent = 100;
+  float volume = static_cast<float>(volumePercent) / 100.0f;
+
+  CoInitialize(nullptr);
+
+  IMMDeviceEnumerator* pEnumerator = nullptr;
+  IMMDevice* pDevice = nullptr;
+  IAudioSessionManager2* pSessionManager = nullptr;
+  IAudioSessionEnumerator* pSessionEnumerator = nullptr;
+
+  CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pEnumerator));
+  pEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDevice);
+  pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&pSessionManager);
+  pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
+
+  int count = 0;
+  pSessionEnumerator->GetCount(&count);
+
+  for (int i = 0; i < count; i++) {
+    IAudioSessionControl* pSessionControl = nullptr;
+    IAudioSessionControl2* pSessionControl2 = nullptr;
+
+    pSessionEnumerator->GetSession(i, &pSessionControl);
+    pSessionControl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pSessionControl2);
+
+    DWORD pid = 0;
+    pSessionControl2->GetProcessId(&pid);
+
+    if (IsTargetProcess(pid, processName)) {
+      ISimpleAudioVolume* pVolume = nullptr;
+      if (SUCCEEDED(pSessionControl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVolume))) {
+        pVolume->SetMasterVolume(volume, nullptr);
+        std::wcout << L"Lautstärke von " << processName << L" auf " << volumePercent << L"% gesetzt.\n";
+        pVolume->Release();
+      }
+    }
+
+    pSessionControl2->Release();
+    pSessionControl->Release();
+  }
+
+  pSessionEnumerator->Release();
+  pSessionManager->Release();
+  pDevice->Release();
+  pEnumerator->Release();
+
+  CoUninitialize();
+}
 
 
 enum COMMAND {
@@ -239,15 +315,39 @@ void CaptureAndProcessRegion(int x, int y, int width, int height, int index) {
   switch (ContainsAnyKeyword(extractedText)) {
   case COMMAND::PREPARATION:
     std::cout << "PREPARATION" << std::endl;
+
+    SetVolume(75, L"RainbowSix.exe");
+    SetVolume(75, L"RainbowSix_Vulkan.exe");
+    SetVolume(75, L"RainbowSix_BE.exe");
+    SetVolume(60, L"Discord.exe");
+
     break;
   case COMMAND::ACTION:
     std::cout << "ACTION" << std::endl;
+
+    SetVolume(100, L"RainbowSix.exe");
+    SetVolume(100, L"RainbowSix_Vulkan.exe");
+    SetVolume(100, L"RainbowSix_BE.exe");
+    SetVolume(50, L"Discord.exe");
+
     break;
   case COMMAND::WON:
     std::cout << "WON" << std::endl;
+
+    SetVolume(50, L"RainbowSix.exe");
+    SetVolume(50, L"RainbowSix_Vulkan.exe");
+    SetVolume(50, L"RainbowSix_BE.exe");
+    SetVolume(70, L"Discord.exe");
+
     break;
   case COMMAND::LOST:
     std::cout << "LOST" << std::endl;
+
+    SetVolume(50, L"RainbowSix.exe");
+    SetVolume(50, L"RainbowSix_Vulkan.exe");
+    SetVolume(50, L"RainbowSix_BE.exe");
+    SetVolume(70, L"Discord.exe");
+
     break;
   case COMMAND::NONE:
   default:
