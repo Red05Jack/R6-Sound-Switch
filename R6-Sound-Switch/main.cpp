@@ -359,7 +359,16 @@ void CaptureAndProcessRegion(int x, int y, int width, int height, int index) {
   ocrApi.End();
 }
 
+#ifdef _DEBUG
+
 int main() {
+ 
+#else
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+  
+#endif
+
   const int captureX = 1380;
   const int captureY = 550;
   const int captureWidth = 1080;
