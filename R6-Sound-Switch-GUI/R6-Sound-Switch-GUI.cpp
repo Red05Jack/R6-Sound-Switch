@@ -84,6 +84,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
+
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
@@ -98,8 +99,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
+
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+     100, 100, 300, 400, nullptr, nullptr, hInstance, nullptr);
+
 
    if (!hWnd)
    {
@@ -135,9 +138,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
+            case IDM_LICENSE:
+              DialogBox(hInst, MAKEINTRESOURCE(IDD_LICENSEBOX), hWnd, About);
+              break;
             case IDM_EXIT:
                 DestroyWindow(hWnd);
                 break;
+            case IDM_EXITALL:
+              DialogBox(hInst, MAKEINTRESOURCE(IDD_EXITBOX), hWnd, About);
+              break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
