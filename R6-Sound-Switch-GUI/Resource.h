@@ -8,15 +8,28 @@
 #define IDD_ABOUTBOX                    103
 #define IDM_ABOUT                       104
 #define IDM_EXIT                        105
-#define IDI_R6SOUNDSWITCHGUI            107
+#define IDI_ICON                        107
 #define IDI_SMALL                       108
-#define IDC_R6SOUNDSWITCHGUI            109
+#define IDR_MAINMENU                    109
 #define IDR_MAINFRAME                   128
 #define IDD_LICENSEBOX                  129
 #define IDD_EXITBOX                     130
 #define IDD_DIALOG1                     132
 #define IDD_MAIN                        132
 #define ID_BTN_EXITALL                  1000
+#define IDC_SLIDER1                     1018
+#define IDC_BUTTON1                     1020
+#define IDC_SLIDER2                     1021
+#define IDC_SLIDER3                     1022
+#define IDC_SLIDER4                     1023
+#define IDC_SLIDER5                     1024
+#define IDC_SLIDER6                     1025
+#define IDC_BUTTON2                     1026
+#define IDC_BUTTON3                     1027
+#define IDC_BUTTON4                     1028
+#define IDC_BUTTON5                     1029
+#define IDC_SLIDER7                     1030
+#define IDC_SLIDER8                     1031
 #define ID_HELP_LICENSE                 32771
 #define IDM_LICENSE                     32772
 #define ID_FILE_CLOSE                   32773
@@ -30,7 +43,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32775
-#define _APS_NEXT_CONTROL_VALUE         1001
+#define _APS_NEXT_CONTROL_VALUE         1031
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif
