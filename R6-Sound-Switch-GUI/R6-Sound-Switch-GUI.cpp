@@ -18,38 +18,75 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+
+INT_PTR CALLBACK DialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+  switch (message)
+  {
+  case WM_INITDIALOG:
+    // Icon setzen
+    SendMessage(hDlg, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON)));
+    SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON)));
+    return (INT_PTR)TRUE;
 
-    // TODO: Place code here.
-
-    // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDR_MAINMENU, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
-
-    // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
+  case WM_COMMAND:
+    switch (LOWORD(wParam))
     {
-        return FALSE;
+    case IDM_ABOUT:
+      MessageBox(hDlg, L"About this app", L"About", MB_OK | MB_ICONINFORMATION);
+      return (INT_PTR)TRUE;
+    case IDM_EXIT:
+      EndDialog(hDlg, 0);
+      return (INT_PTR)TRUE;
     }
+    break;
 
-    MSG msg;
+  case WM_CLOSE:
+    EndDialog(hDlg, 0);
+    return (INT_PTR)TRUE;
+  }
+  return (INT_PTR)FALSE;
+}
 
-    // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
-    {
+
+int APIENTRY wWinMain(HINSTANCE hInstance,
+  HINSTANCE hPrevInstance,
+  LPWSTR    lpCmdLine,
+  int       nCmdShow)
+{
+  UNREFERENCED_PARAMETER(hPrevInstance);
+  UNREFERENCED_PARAMETER(lpCmdLine);
+
+  // Optional: Global handle speichern
+  hInst = hInstance;
+
+  HWND hDlg = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_MAIN), nullptr, DialogProc, 0);
+  if (!hDlg) {
+    MessageBox(nullptr, L"Dialog creation failed!", L"Error", MB_OK | MB_ICONERROR);
+    return FALSE;
+  }
+
+  // Menü laden und setzen
+  HMENU hMenu = LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MAINMENU));
+  if (hMenu) {
+    SetMenu(hDlg, hMenu);
+  }
+
+  ShowWindow(hDlg, nCmdShow);
+  UpdateWindow(hDlg);
+
+  MSG msg;
+  while (GetMessage(&msg, nullptr, 0, 0))
+  {
+    if (!IsDialogMessage(hDlg, &msg)) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
+  }
 
-    return (int) msg.wParam;
+  return (int)msg.wParam;
 }
+
 
 
 
